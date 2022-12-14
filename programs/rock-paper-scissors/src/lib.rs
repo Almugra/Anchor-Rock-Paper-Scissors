@@ -11,6 +11,18 @@ pub mod rock_paper_scissors {
             .game
             .start([ctx.accounts.player_one.key(), player_two], sign)
     }
+
+    pub fn play(ctx: Context<Play>, sign: u8) -> Result<()> {
+        let game = &mut ctx.accounts.game;
+
+        require_keys_eq!(
+            game.players[1],
+            ctx.accounts.player.key(),
+            RockPaperScissorsErros::NotPlayersTurn
+        );
+
+        game.play(sign)
+    }
 }
 
 #[account]
@@ -55,11 +67,12 @@ impl Game {
     pub fn play(&mut self, sign: u8) -> Result<()> {
         require!(self.is_active(), RockPaperScissorsErros::GameAlreadyOver);
         self.board[1] = Some(sign);
-        Self::update_state(self, self.board[0].unwrap(), sign);
+        Self::update_state(self, sign);
         Ok(())
     }
 
-    pub fn update_state(&mut self, p0: u8, p1: u8) {
+    pub fn update_state(&mut self, p1: u8) {
+        let p0 = self.board[0].unwrap();
         if p0 == p1 {
             self.state = GameState::Tie;
         } else {
@@ -77,4 +90,11 @@ pub struct SetupGame<'info> {
     #[account(mut)]
     pub player_one: Signer<'info>,
     pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct Play<'info> {
+    #[account(mut)]
+    pub game: Account<'info, Game>,
+    pub player: Signer<'info>,
 }
